@@ -1,3 +1,4 @@
+# -*-coding: utf-8-*-
 import unittest
 from chessengine.base import ChessPosition
 
@@ -118,25 +119,59 @@ class TestPawnMoves(unittest.TestCase):
         attack_move = moves[3]
         self.assertEquals(attack_move.position[7][0], (QUEEN, WHITE))
 
-    def xtest_black_pawn_moves(self):
+    def test_white_en_passent_moves(self):
+        position = [
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [(PAWN, WHITE), (PAWN, BLACK), None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 2, piece_moved=[(6, 1), (4, 1)])
+        moves = chess_position._get_pawn_moves(position[4][0], 4, 0, color=WHITE)
+        self.assertEquals(len(moves), 2, moves)
+        forward_move = moves[0]
+        self.assertEquals(forward_move.position[5][0], (PAWN, WHITE))
+        en_passent_move = moves[1]
+        self.assertOnlyPiece(en_passent_move, (PAWN, WHITE), 5, 1)
+        position = [
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, (PAWN, BLACK), (PAWN, WHITE)],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 2, piece_moved=[(6, 6), (4, 6)])
+        moves = chess_position._get_pawn_moves(position[4][7], 4, 7, color=WHITE)
+        self.assertEquals(len(moves), 2, moves)
+        forward_move = moves[0]
+        self.assertEquals(forward_move.position[5][7], (PAWN, WHITE))
+        en_passent_move = moves[1]
+        self.assertOnlyPiece(en_passent_move, (PAWN, WHITE), 5, 6)
+
+    def test_black_pawn_moves(self):
         position = [
             [None, None, None, None, None, None, None, None],
             [None, None, None, None, None, None, None, None],
             [None, None, None, None, None, None, None, None],
             [None, None, None, None, None, None, None, None],
             [None, None, None, None, None, None, None, None],
-            [ChessPosition.WHITEPAWN, ChessPosition.WHITEPAWN, ChessPosition.WHITEPAWN, None, None, None, None, None],
-            [None, ChessPosition.BLACKPAWN, None, None, None, None, None, None],
+            [(PAWN, WHITE), (PAWN, WHITE), (PAWN, WHITE), None, None, None, None, None],
+            [None, (PAWN, BLACK), None, None, None, None, None, None],
             [None, None, None, None, None, None, None, None]]
         chess_position = ChessPosition(position, 2)
-        moves = chess_position._get_black_pawn_moves(position[6][1], 6, 1)
+        moves = chess_position._get_pawn_moves(position[6][1], 6, 1, color=BLACK)
         self.assertEquals(len(moves), 2, moves)
         attack_move = moves[0]
         self.assertEquals(attack_move.position[6][1], None)
-        self.assertEquals(attack_move.position[5][0], ChessPosition.BLACKPAWN)
+        self.assertEquals(attack_move.position[5][0], (PAWN, BLACK))
         attack_move = moves[1]
         self.assertEquals(attack_move.position[6][1], None)
-        self.assertEquals(attack_move.position[5][2], ChessPosition.BLACKPAWN)
+        self.assertEquals(attack_move.position[5][2], (PAWN, BLACK))
 
         position = [
             [None, None, None, None, None, None, None, None],
@@ -145,12 +180,47 @@ class TestPawnMoves(unittest.TestCase):
             [None, None, None, None, None, None, None, None],
             [None, None, None, None, None, None, None, None],
             [None, None, None, None, None, None, None, None],
-            [None, ChessPosition.BLACKPAWN, None, None, None, None, None, None],
+            [None, (PAWN, BLACK), None, None, None, None, None, None],
             [None, None, None, None, None, None, None, None]]
         chess_position = ChessPosition(position, 1)
-        moves = chess_position._get_black_pawn_moves(position[6][1], 6, 1)
+        moves = chess_position._get_pawn_moves(position[6][1], 6, 1, color=BLACK)
         self.assertEquals(len(moves), 2, moves)
         attack_move = moves[0]
-        self.assertOnlyPiece(attack_move, ChessPosition.BLACKPAWN, 5, 1)
+        self.assertOnlyPiece(attack_move, (PAWN, BLACK), 5, 1)
         attack_move = moves[1]
-        self.assertOnlyPiece(attack_move, ChessPosition.BLACKPAWN, 4, 1)
+        self.assertOnlyPiece(attack_move, (PAWN, BLACK), 4, 1)
+
+
+    def test_black_en_passent_moves(self):
+        position = [
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [(PAWN, BLACK), (PAWN, WHITE), None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 2, piece_moved=[(1, 1), (3, 1)])
+        moves = chess_position._get_pawn_moves(position[3][0], 3, 0, color=BLACK)
+        self.assertEquals(len(moves), 2, moves)
+        forward_move = moves[0]
+        self.assertEquals(forward_move.position[2][0], (PAWN, BLACK))
+        en_passent_move = moves[1]
+        self.assertOnlyPiece(en_passent_move, (PAWN, BLACK), 2, 1)
+        position = [
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, (PAWN, WHITE), (PAWN, BLACK)],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 2, piece_moved=[(1, 6), (3, 6)])
+        moves = chess_position._get_pawn_moves(position[3][7], 3, 7, color=BLACK)
+        self.assertEquals(len(moves), 2, moves)
+        forward_move = moves[0]
+        self.assertEquals(forward_move.position[2][7], (PAWN, BLACK))
+        en_passent_move = moves[1]
+        self.assertOnlyPiece(en_passent_move, (PAWN, BLACK), 2, 6)
