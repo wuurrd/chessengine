@@ -189,5 +189,26 @@ class ChessPosition(object):
                                                 piece_moved=[(row, column), (row, column+1)]))
         return possible_moves
 
+    def _get_knight_moves(self, piece, row, column, color=WHITE):
+        if color == self.WHITE:
+            is_same_color = lambda piece: piece[1] == self.WHITE
+        else:
+            is_same_color = lambda piece: piece[1] == self.BLACK
+        movement_vectors = [[2, 1], [1, 2], [-1, 2], [1, -2], [-2, 1], [2, -1], [-2, -1], [-1, -2]]
+        def within_bounds(position):
+            return position[0] >= 0 and position[0] <= 7 and position[1] >= 0 and position[1] <= 7
+        possible_moves = []
+        for movement_vector in movement_vectors:
+            change = [row + movement_vector[0], column + movement_vector[1]]
+            if within_bounds(change) and \
+               (self.position[change[0]][change[1]] == None or
+                not is_same_color(self.position[change[0]][change[1]])):
+                position = copy.deepcopy(self.position)
+                position[row][column] = None
+                position[change[0]][change[1]] = piece
+                possible_moves.append(ChessPosition(position, self.move_number+1,
+                                                    piece_moved=[(row, column), change]))
+        return possible_moves
+
     def get_strength(self):
         pass

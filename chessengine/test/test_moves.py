@@ -224,3 +224,69 @@ class TestPawnMoves(unittest.TestCase):
         self.assertEquals(forward_move.position[2][7], (PAWN, BLACK))
         en_passent_move = moves[1]
         self.assertOnlyPiece(en_passent_move, (PAWN, BLACK), 2, 6)
+
+class TestKnightMoves(unittest.TestCase):
+    def assertOnlyPiece(self, board, expected_piece, x, y):
+        for i, row in enumerate(board.position):
+            for j, piece in enumerate(row):
+                if i == x and j == y:
+                    self.assertEquals(piece, expected_piece)
+                else:
+                    self.assertEquals(piece, None)
+
+    def assertExistsPiece(self, board, expected_piece, x, y):
+        self.assertEquals(board.position[x][y], expected_piece)
+
+    def test_middle_knight_moves(self):
+        position = [
+            [None, None, None, None, None, None, None, None],
+            [None, (HORSE, WHITE), None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 3)
+        moves = chess_position._get_knight_moves(position[1][1], 1, 1)
+        self.assertEquals(len(moves), 4, moves)
+        move = moves[0]
+        self.assertOnlyPiece(move, (HORSE, WHITE), 3, 2)
+        move = moves[1]
+        self.assertOnlyPiece(move, (HORSE, WHITE), 2, 3)
+        move = moves[2]
+        self.assertOnlyPiece(move, (HORSE, WHITE), 0, 3)
+        move = moves[3]
+        self.assertOnlyPiece(move, (HORSE, WHITE), 3, 0)
+
+    def test_blocked_moves(self):
+        position = [
+            [None, None, None, (HORSE, WHITE), None, None, None, None],
+            [None, (HORSE, WHITE), None, None, None, None, None, None],
+            [None, None, None, (HORSE, WHITE), None, None, None, None],
+            [None, None, (HORSE, WHITE), None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 3)
+        moves = chess_position._get_knight_moves(position[1][1], 1, 1)
+        self.assertEquals(len(moves), 1, moves)
+        move = moves[0]
+        self.assertExistsPiece(move, (HORSE, WHITE), 3, 0)
+
+    def test_capture_moves(self):
+        position = [
+            [None, None, None, (HORSE, WHITE), None, None, None, None],
+            [None, (HORSE, WHITE), None, None, None, None, None, None],
+            [None, None, None, (HORSE, WHITE), None, None, None, None],
+            [(HORSE, BLACK), None, (HORSE, WHITE), None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 3)
+        moves = chess_position._get_knight_moves(position[1][1], 1, 1)
+        self.assertEquals(len(moves), 1, moves)
+        move = moves[0]
+        self.assertExistsPiece(move, (HORSE, WHITE), 3, 0)
