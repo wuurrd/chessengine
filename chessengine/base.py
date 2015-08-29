@@ -83,9 +83,15 @@ class ChessPosition(object):
 
     def _get_moves(self, piece, row, column):
         if piece[0] == self.PAWN and piece[1] == self.WHITE:
-            return self._get_pawn_moves(piece, row, column)
-        if piece[0] == self.PAWN and piece[1] == self.BLACK:
+            return self._get_pawn_moves(piece, row, column, color=self.WHITE)
+        elif piece[0] == self.PAWN and piece[1] == self.BLACK:
             return self._get_pawn_moves(piece, row, column, color=self.BLACK)
+        elif piece[0] == self.HORSE and piece[1] == self.WHITE:
+            return self._get_knight_moves(piece, row, column, color=self.WHITE)
+        elif piece[0] == self.HORSE and piece[1] == self.BLACK:
+            return self._get_knight_moves(piece, row, column, color=self.BLACK)
+        else:
+            raise NotImplementedError("blah")
 
     def _get_pawn_moves(self, piece, row, column, color=WHITE):
         #one forward, two forward, attack left, attack right,
@@ -208,6 +214,34 @@ class ChessPosition(object):
                 position[change[0]][change[1]] = piece
                 possible_moves.append(ChessPosition(position, self.move_number+1,
                                                     piece_moved=[(row, column), change]))
+        return possible_moves
+
+    def _get_bishop_moves(self, piece, row, column, color=WHITE):
+        if color == self.WHITE:
+            is_same_color = lambda piece: piece[1] == self.WHITE
+        else:
+            is_same_color = lambda piece: piece[1] == self.BLACK
+        movement_vectors = [[1, 1], [1, -1], [-1, 1], [-1, -1]]
+        def within_bounds(position):
+            return position[0] >= 0 and position[0] <= 7 and position[1] >= 0 and position[1] <= 7
+        possible_moves = []
+        for movement_vector in movement_vectors:
+            for multiplier in range(1, 7):
+                change = [row + multiplier * movement_vector[0],
+                          column + multiplier * movement_vector[1]]
+                if not within_bounds(change):
+                    break
+                movement_square = self.position[change[0]][change[1]]
+                if movement_square is not None and is_same_color(movement_square):
+                    break
+                position = copy.deepcopy(self.position)
+                position[row][column] = None
+                position[change[0]][change[1]] = piece
+                possible_moves.append(ChessPosition(position, self.move_number+1,
+                                                    piece_moved=[(row, column), change]))
+                if movement_square is not None:
+                    # Another color take or stop
+                    break
         return possible_moves
 
     def get_strength(self):

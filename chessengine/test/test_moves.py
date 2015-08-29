@@ -290,3 +290,72 @@ class TestKnightMoves(unittest.TestCase):
         self.assertEquals(len(moves), 1, moves)
         move = moves[0]
         self.assertExistsPiece(move, (HORSE, WHITE), 3, 0)
+
+class TestBishopMoves(unittest.TestCase):
+    def assertOnlyPiece(self, board, expected_piece, x, y):
+        for i, row in enumerate(board.position):
+            for j, piece in enumerate(row):
+                if i == x and j == y:
+                    self.assertEquals(piece, expected_piece)
+                else:
+                    self.assertEquals(piece, None)
+
+    def assertExistsPiece(self, board, expected_piece, x, y):
+        self.assertEquals(board.position[x][y], expected_piece)
+
+
+    def test_blocked_moves(self):
+        position = [
+            [(BISHOP, WHITE), None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, (BISHOP, WHITE), None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 3)
+
+        moves = chess_position._get_bishop_moves(position[0][0], 0, 0, color=WHITE)
+        self.assertEquals(len(moves), 1, moves)
+        move = moves[0]
+        self.assertExistsPiece(move, (BISHOP, WHITE), 1, 1)
+        position = [
+            [(BISHOP, WHITE), None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, (BISHOP, BLACK), None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 3)
+        moves = chess_position._get_bishop_moves(position[0][0], 0, 0, color=WHITE)
+        self.assertEquals(len(moves), 2, moves)
+        move = moves[0]
+        self.assertExistsPiece(move, (BISHOP, WHITE), 1, 1)
+        move = moves[1]
+        self.assertOnlyPiece(move, (BISHOP, WHITE), 2, 2)
+
+    def test_all_side_moves(self):
+        position = [
+            [None, None, None, None, None, None, None, None],
+            [None, (BISHOP, BLACK), None, (BISHOP, BLACK), None, None, None, None],
+            [None, None, (BISHOP, WHITE), None, None, None, None, None],
+            [None, (BISHOP, BLACK), None, (BISHOP, BLACK), None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None, None]]
+        chess_position = ChessPosition(position, 3)
+
+        moves = chess_position._get_bishop_moves(position[2][2], 2, 2, color=WHITE)
+        self.assertEquals(len(moves), 4, moves)
+        move = moves[0]
+        self.assertExistsPiece(move, (BISHOP, WHITE), 3, 3)
+        move = moves[1]
+        self.assertExistsPiece(move, (BISHOP, WHITE), 3, 1)
+        move = moves[2]
+        self.assertExistsPiece(move, (BISHOP, WHITE), 1, 3)
+        move = moves[3]
+        self.assertExistsPiece(move, (BISHOP, WHITE), 1, 1)
