@@ -563,6 +563,15 @@ class TestKingMoves(unittest.TestCase):
         king_moves = chess_position._get_moves(position[6][4], 6, 4)
         self.assertEquals(len(king_moves), 6)
 
+    def test_king_castle(self):
+        position = self.fen_to_board('r3k2r/pppppp1p/6Q1/8/8/8/PPPPPPPP/RNB1KBNR')
+        chess_position = ChessPosition(position, 1)
+        king_moves = chess_position._get_moves(position[0][4], 0, 4)
+        self.assertEquals(len(king_moves), 3)
+        castle_move = king_moves[2]
+        self.assertExistsPiece(castle_move, (KING, WHITE), 0, 2)
+        self.assertExistsPiece(castle_move, (TOWER, WHITE), 0, 3)
+
 class TestPerft(unittest.TestCase):
     def fen_to_board(self, fen_string):
         char_map = {
@@ -601,10 +610,12 @@ class TestPerft(unittest.TestCase):
         chess_position = ChessPosition(position, 1)
         moves = chess_position.get_moves_for_depth(1)
         self.assertEqual(len(moves), 24)
+        moves = chess_position.get_moves_for_depth(2)
+        self.assertEqual(len(moves), 520)
 
     def test_king_loose(self):
         position = self.fen_to_board('4k3/8/8/8/8/8/8/4K2R')
-        chess_position = ChessPosition(position, 2)
+        chess_position = ChessPosition(position, 2, bc_rights=False)
         moves = chess_position.get_moves()
         self.assertEqual(len(moves), 14)
 

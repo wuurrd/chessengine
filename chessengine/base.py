@@ -37,11 +37,13 @@ class ChessPosition(object):
     WHITE = 'white'
     BLACK = 'black'
 
-    def __init__(self, position_array, move_number, piece_moved=None):
+    def __init__(self, position_array, move_number, piece_moved=None, bc_rights=True, wc_rights=True):
         self.position = position_array
         self.move_number = move_number
         self.white_to_move = move_number % 2 == 1
         self.piece_moved = piece_moved
+        self.bc_rights = bc_rights
+        self.wc_rights = wc_rights
 
     def __unicode__(self):
         position = list(reversed(self.position))
@@ -96,20 +98,25 @@ class ChessPosition(object):
         return moves
 
     def _get_moves(self, piece, row, column, no_mate_checking=False):
+        moves = []
         if piece[0].name == 'pawn':
-            return self._get_pawn_moves(piece, row, column)
+            moves = self._get_pawn_moves(piece, row, column)
         elif piece[0].name == 'horse':
-            return self._get_knight_moves(piece, row, column)
+            moves = self._get_knight_moves(piece, row, column)
         elif piece[0].name == 'bishop':
-            return self._get_bishop_moves(piece, row, column)
+            moves = self._get_bishop_moves(piece, row, column)
         elif piece[0].name == 'tower':
-            return self._get_tower_moves(piece, row, column)
+            moves = self._get_tower_moves(piece, row, column)
         elif piece[0].name == 'queen':
-            return self._get_queen_moves(piece, row, column)
+            moves = self._get_queen_moves(piece, row, column)
         elif piece[0].name == 'king':
-            return self._get_king_moves(piece, row, column, no_mate_checking=no_mate_checking)
+            moves = self._get_king_moves(piece, row, column, no_mate_checking=no_mate_checking)
         else:
             raise NotImplementedError("%s" % piece[0])
+        for move in moves[:]:
+            if not no_mate_checking and not move.legal_move():
+                moves.remove(move)
+        return moves
 
     def copy_position(self, position):
         return [row[:] for row in position]
@@ -304,15 +311,66 @@ class ChessPosition(object):
 
     def _get_king_moves(self, piece, row, column, no_mate_checking=False):
         regular_moves = self._get_queenlike_moves(piece, row, column,
-                                                  use_multiplier=False,
-                                                  allow_eating=no_mate_checking)
-        castle_moves = self._get_castle_moves(piece, row, column)
+                                                  use_multiplier=False)
+        castle_moves = self._get_castle_moves(piece, row, column, no_mate_checking=no_mate_checking)
         return regular_moves + castle_moves
 
-    def _get_castle_moves(self, piece, row, column):
-        return []
+    def _get_castle_moves(self, piece, row, column, no_mate_checking=False):
+        '''
+        - Tower in correct file
+        - King in correct file
+        - Nothing in between
+        - Nothing under attack in all squares
+        '''
+        color = piece[1]
+        king_file = 4
+        tower_files = [0, 7]
+        if color == self.WHITE:
+            castle_row = 0
+            attacking_color = self.BLACK
+            castle_right = self.wc_rights
+        else:
+            castle_row = 7
+            attacking_color = self.WHITE
+            castle_right = self.bc_rights
+        if not castle_right or row != castle_row or column != king_file:
+            return []
+        moves = []
+        for tower_file in tower_files:
+            tower_square = self.position[castle_row][tower_file]
+            if tower_square is None or tower_square[0] != self.TOWER or tower_square[1] != color:
+                continue
+            if tower_file == 0:
+                squares = range(0, 5)
+            if tower_file == 7:
+                squares = range(4, 8)
+            illegal_castle = False
+            for square in squares:
+                if square not in [0, 4, 7] and self.position[castle_row][square] != None:
+                    illegal_castle = True
+                    break
+                if not no_mate_checking and self.square_under_attack(attacking_color, castle_row, square):
+                    illegal_castle = True
+                    break
+            if illegal_castle:
+                continue
+            position = self.copy_position(self.position)
+            if tower_file == 0:
+                position[castle_row][3] = position[castle_row][0]
+                position[castle_row][2] = position[castle_row][4]
+                change = [(castle_row, 4), (castle_row, 2)]
+            else:
+                position[castle_row][5] = position[castle_row][0]
+                position[castle_row][6] = position[castle_row][4]
+                change = [(castle_row, 4), (castle_row, 6)]
+            position[castle_row][column] = None
+            position[castle_row][tower_file] = None
+            new_position = ChessPosition(position, self.move_number+1,
+                                         piece_moved=[(row, column), change])
+            moves.append(new_position)
+        return moves
 
-    def _get_queenlike_moves(self, piece, row, column, use_multiplier=True, allow_eating=True):
+    def _get_queenlike_moves(self, piece, row, column, use_multiplier=True):
         color = piece[1]
         if color == self.WHITE:
             is_same_color = lambda piece: piece[1] == self.WHITE
@@ -337,8 +395,6 @@ class ChessPosition(object):
                 position[change[0]][change[1]] = piece
                 new_position = ChessPosition(position, self.move_number+1,
                                              piece_moved=[(row, column), change])
-                if not allow_eating and new_position.king_in_check(piece, change[0], change[1]):
-                    continue
                 possible_moves.append(new_position)
                 if movement_square is not None:
                     # Another color take or stop
@@ -359,20 +415,31 @@ class ChessPosition(object):
                 if piece and piece[0] == self.KING and piece[1] == color:
                     return piece, i, j
 
+    def square_under_attack(self, attacking_color, original_row, original_column):
+        for i, row in enumerate(self.position):
+            for j, piece in enumerate(row):
+                if piece is not None and piece[1] == attacking_color:
+                    if piece[0] == self.PAWN and abs(original_row - i) > 1:
+                        # PAWNS can not attack further than 1 row away
+                        continue
+                    if piece[0] == self.HORSE and abs(original_row - i) > 3:
+                        # HORSES can not attack further than 3 rows away
+                        continue
+                    if piece[0] == self.HORSE and abs(original_column - j) > 3:
+                        # HORSES can not attack further than 3 columns away
+                        continue
+                    for move in self._get_moves(piece, i, j, no_mate_checking=True):
+                        attacked_square = move.position[original_row][original_column]
+                        if attacked_square != None and attacked_square[1] == attacking_color:
+                            return True
+        return False
+
     def king_in_check(self, original_piece, original_row, original_column):
         if original_piece[1] == self.WHITE:
             color = self.BLACK
         else:
             color = self.WHITE
-        moves = []
-        for i, row in enumerate(self.position):
-            for j, piece in enumerate(row):
-                if piece is not None and piece[1] == color:
-                    moves += self._get_moves(piece, i, j, no_mate_checking=True)
-        for move in moves:
-            if move.position[original_row][original_column] != original_piece:
-                return True
-        return False
+        return self.square_under_attack(color, original_row, original_column)
 
     def get_strength(self):
         pass
