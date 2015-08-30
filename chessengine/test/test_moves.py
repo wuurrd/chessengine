@@ -572,6 +572,12 @@ class TestKingMoves(unittest.TestCase):
         self.assertExistsPiece(castle_move, (KING, WHITE), 0, 2)
         self.assertExistsPiece(castle_move, (TOWER, WHITE), 0, 3)
 
+    def test_king_no_castle_under_attack(self):
+        position = self.fen_to_board('r3k2r/1ppppp1p/R5Q1/8/8/8/PPPPPPPP/1NB1KBNR')
+        chess_position = ChessPosition(position, 1)
+        king_moves = chess_position._get_moves(position[0][4], 0, 4)
+        self.assertEquals(len(king_moves), 2)
+
 class TestPerft(unittest.TestCase):
     def fen_to_board(self, fen_string):
         char_map = {

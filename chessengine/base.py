@@ -82,8 +82,11 @@ class ChessPosition(object):
                 result.extend(move.get_moves_for_depth(depth-1))
         return result
 
-    def get_moves(self):
-        color_to_move = self.WHITE if self.white_to_move else self.BLACK
+    def get_moves(self, color=None):
+        if color:
+            color_to_move = color
+        else:
+            color_to_move = self.WHITE if self.white_to_move else self.BLACK
 
         king, x, y = self.get_king(color_to_move) or (None, None, None)
         if king and self.king_in_check(king, x, y):
@@ -442,7 +445,71 @@ class ChessPosition(object):
         return self.square_under_attack(color, original_row, original_column)
 
     def get_strength(self):
-        pass
+        '''
+        f(p) = 200(K-K')
+             + 9(Q-Q')
+             + 5(R-R')
+             + 3(B-B' + N-N')
+             + 1(P-P')
+             - 0.5(D-D' + S-S' + I-I')
+             + 0.1(M-M') + ...
+        KQRBNP = number of kings, queens, rooks, bishops, knights and pawns
+        D,S,I = doubled, blocked and isolated pawns
+        M = Mobility (the number of legal moves)
+        '''
+        pieces = [piece for row in self.position for piece in row if piece != None]
+        kings_w = len(filter(lambda k: k == (self.KING, self.WHITE), pieces))
+        kings_b = len(filter(lambda k: k == (self.KING, self.BLACK), pieces))
+        queens_w = len(filter(lambda k: k == (self.QUEEN, self.WHITE), pieces))
+        queens_b = len(filter(lambda k: k == (self.QUEEN, self.BLACK), pieces))
+        rooks_w = len(filter(lambda k: k == (self.TOWER, self.WHITE), pieces))
+        rooks_b = len(filter(lambda k: k == (self.TOWER, self.BLACK), pieces))
+        bishops_w = len(filter(lambda k: k == (self.BISHOP, self.WHITE), pieces))
+        bishops_b = len(filter(lambda k: k == (self.BISHOP, self.BLACK), pieces))
+        horses_w = len(filter(lambda k: k == (self.HORSE, self.WHITE), pieces))
+        horses_b = len(filter(lambda k: k == (self.HORSE, self.BLACK), pieces))
+        pawns_w = len(filter(lambda k: k == (self.PAWN, self.WHITE), pieces))
+        pawns_b = len(filter(lambda k: k == (self.PAWN, self.BLACK), pieces))
+        doubled_pawns_w, blocked_pawns_w, isolated_pawns_w = self.get_pawn_weaknesses(self.WHITE)
+        doubled_pawns_b, blocked_pawns_b, isolated_pawns_b = self.get_pawn_weaknesses(self.BLACK)
+        mobility_w = self.get_mobility(self.WHITE)
+        mobility_b = self.get_mobility(self.BLACK)
+        return (200*(kings_w - kings_b) + 9 * (queens_w - queens_b) +
+                5 * (rooks_w - rooks_b) + 3 * (bishops_w - bishops_b) +
+                3 * (horses_w - horses_b) + (pawns_w - pawns_b) +
+                -0.5 * (doubled_pawns_w - doubled_pawns_b) +
+                -0.5 * (blocked_pawns_w - blocked_pawns_b) +
+                -0.5 * (isolated_pawns_w - isolated_pawns_b) +
+                0.1 * (mobility_w - mobility_b))
+
+    def get_pawn_weaknesses(self, color):
+        if color == self.BLACK:
+            color_row = -1
+        else:
+            color_row = 1
+        doubled_pawns = 0
+        blocked_pawns = 0
+        isolated_pawns = 0
+
+        for i, row in enumerate(self.position):
+            for j, piece in enumerate(row):
+                if piece != None and piece[0] == self.PAWN and piece[1] == color:
+                    isolated = True
+                    if (j > 1 and self.position[i-color_row][j-1] != None and
+                        self.position[i-color_row][j-1][0] == self.PAWN) or \
+                        (j < 7 and self.position[i-color_row][j+1] != None and
+                         self.position[i-color_row][j+1][0] == self.PAWN):
+                        isolated = False
+                    if (self.position[i+color_row][j] == (self.PAWN, color)):
+                        doubled_pawns += 1
+                    if (self.position[i+color_row][j] != None):
+                        blocked_pawns += 1
+                    if isolated:
+                        isolated_pawns += 1
+        return doubled_pawns, blocked_pawns, isolated_pawns
+
+    def get_mobility(self, color):
+        return len(self.get_moves(color))
 
 if __name__ == '__main__':
     BLACK = ChessPosition.BLACK
