@@ -601,8 +601,6 @@ class TestPerft(unittest.TestCase):
         chess_position = ChessPosition(position, 1)
         moves = chess_position.get_moves_for_depth(1)
         self.assertEqual(len(moves), 24)
-        # moves = chess_position.get_moves_for_depth(2)
-        # self.assertEqual(len(moves), 566)
 
     def test_king_loose(self):
         position = self.fen_to_board('4k3/8/8/8/8/8/8/4K2R')
@@ -612,6 +610,6 @@ class TestPerft(unittest.TestCase):
 
     def test_king_check(self):
         position = self.fen_to_board('k7/Q7/7b/8/8/8/8/8')
-        chess_position = ChessPosition(position, 2)
+        chess_position = ChessPosition(position, 1)
         moves = chess_position.get_moves()
         self.assertEqual(len(moves), 1)

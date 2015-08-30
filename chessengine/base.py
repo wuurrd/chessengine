@@ -74,20 +74,25 @@ class ChessPosition(object):
         if depth == 0:
             return []
         moves = self.get_moves()
-        for move in moves:
-            result.append(move)
-            result.extend(move.get_moves_for_depth(depth-1))
+        result.extend(moves)
+        if depth > 1:
+            for move in moves:
+                result.extend(move.get_moves_for_depth(depth-1))
         return result
 
     def get_moves(self):
-        moves = []
         color_to_move = self.WHITE if self.white_to_move else self.BLACK
+
+        king, x, y = self.get_king(color_to_move) or (None, None, None)
+        if king and self.king_in_check(king, x, y):
+            return self._get_moves(king, x, y)
+        moves = []
         for i, row in enumerate(self.position):
             for j, piece in enumerate(row):
                 if piece == None:
                     continue
                 if piece[1] == color_to_move:
-                    moves += self._get_moves(piece, i, j)
+                    moves.extend(self._get_moves(piece, i, j))
         return moves
 
     def _get_moves(self, piece, row, column, no_mate_checking=False):
@@ -305,11 +310,6 @@ class ChessPosition(object):
         return regular_moves + castle_moves
 
     def _get_castle_moves(self, piece, row, column):
-        color = piece[1]
-        if color == self.WHITE and ChessPosition.white_king_moved:
-            return []
-        if color == self.BLACK and ChessPosition.black_king_moved:
-            return []
         return []
 
     def _get_queenlike_moves(self, piece, row, column, use_multiplier=True, allow_eating=True):
@@ -344,6 +344,20 @@ class ChessPosition(object):
                     # Another color take or stop
                     break
         return possible_moves
+
+    def legal_move(self):
+        color_to_move = self.BLACK if self.white_to_move else self.WHITE
+
+        king, x, y = self.get_king(color_to_move) or (None, None, None)
+        if king and self.king_in_check(king, x, y):
+            return False
+        return True
+
+    def get_king(self, color):
+        for i, row in enumerate(self.position):
+            for j, piece in enumerate(row):
+                if piece and piece[0] == self.KING and piece[1] == color:
+                    return piece, i, j
 
     def king_in_check(self, original_piece, original_row, original_column):
         if original_piece[1] == self.WHITE:
