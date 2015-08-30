@@ -622,11 +622,11 @@ class TestPerft(unittest.TestCase):
     def test_king_loose(self):
         position = self.fen_to_board('4k3/8/8/8/8/8/8/4K2R')
         chess_position = ChessPosition(position, 2, bc_rights=False)
-        moves = chess_position.get_moves()
+        moves = list(chess_position.get_moves())
         self.assertEqual(len(moves), 14)
 
     def test_king_check(self):
         position = self.fen_to_board('k7/Q7/7b/8/8/8/8/8')
         chess_position = ChessPosition(position, 1)
-        moves = chess_position.get_moves()
+        moves = list(chess_position.get_moves())
         self.assertEqual(len(moves), 1)

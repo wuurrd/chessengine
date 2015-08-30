@@ -75,30 +75,26 @@ class ChessPosition(object):
         result = []
         if depth == 0:
             return []
-        moves = self.get_moves()
+        moves = list(self.get_moves())
         result.extend(moves)
         if depth > 1:
             for move in moves:
                 result.extend(move.get_moves_for_depth(depth-1))
         return result
 
-    def get_moves(self, color=None):
+    def get_moves(self, color=None, exclude_pieces=[]):
         if color:
             color_to_move = color
         else:
             color_to_move = self.WHITE if self.white_to_move else self.BLACK
 
-        king, x, y = self.get_king(color_to_move) or (None, None, None)
-        if king and self.king_in_check(king, x, y):
-            return self._get_moves(king, x, y)
-        moves = []
         for i, row in enumerate(self.position):
             for j, piece in enumerate(row):
                 if piece == None:
                     continue
-                if piece[1] == color_to_move:
-                    moves.extend(self._get_moves(piece, i, j))
-        return moves
+                if piece[1] == color_to_move and piece[0 not in exclude_pieces]:
+                    for move in self._get_moves(piece, i, j):
+                        yield move
 
     def _get_moves(self, piece, row, column, no_mate_checking=False):
         moves = []
@@ -444,7 +440,7 @@ class ChessPosition(object):
             color = self.WHITE
         return self.square_under_attack(color, original_row, original_column)
 
-    def get_strength(self):
+    def get_strength(self, color=None):
         '''
         f(p) = 200(K-K')
              + 9(Q-Q')
@@ -474,13 +470,17 @@ class ChessPosition(object):
         doubled_pawns_b, blocked_pawns_b, isolated_pawns_b = self.get_pawn_weaknesses(self.BLACK)
         mobility_w = self.get_mobility(self.WHITE)
         mobility_b = self.get_mobility(self.BLACK)
-        return (200*(kings_w - kings_b) + 9 * (queens_w - queens_b) +
-                5 * (rooks_w - rooks_b) + 3 * (bishops_w - bishops_b) +
-                3 * (horses_w - horses_b) + (pawns_w - pawns_b) +
-                -0.5 * (doubled_pawns_w - doubled_pawns_b) +
-                -0.5 * (blocked_pawns_w - blocked_pawns_b) +
-                -0.5 * (isolated_pawns_w - isolated_pawns_b) +
-                0.1 * (mobility_w - mobility_b))
+        result = (200*(kings_w - kings_b) + 9 * (queens_w - queens_b) +
+                  5 * (rooks_w - rooks_b) + 3 * (bishops_w - bishops_b) +
+                  3 * (horses_w - horses_b) + (pawns_w - pawns_b) +
+                  -0.5 * (doubled_pawns_w - doubled_pawns_b) +
+                  -0.5 * (blocked_pawns_w - blocked_pawns_b) +
+                  -0.5 * (isolated_pawns_w - isolated_pawns_b) +
+                  0.1 * (mobility_w - mobility_b))
+        if color in [None, self.WHITE]:
+            return result
+        else:
+            return -result
 
     def get_pawn_weaknesses(self, color):
         if color == self.BLACK:
@@ -496,9 +496,13 @@ class ChessPosition(object):
                 if piece != None and piece[0] == self.PAWN and piece[1] == color:
                     isolated = True
                     if (j > 1 and self.position[i-color_row][j-1] != None and
-                        self.position[i-color_row][j-1][0] == self.PAWN) or \
-                        (j < 7 and self.position[i-color_row][j+1] != None and
-                         self.position[i-color_row][j+1][0] == self.PAWN):
+                        self.position[i-color_row][j-1] == (self.PAWN, color)) or \
+                       (j > 1 and self.position[i][j-1] != None and
+                        self.position[i][j-1] == (self.PAWN, color)) or \
+                       (j < 7 and self.position[i-color_row][j+1] != None and
+                        self.position[i-color_row][j+1] == (self.PAWN, color)) or \
+                       (j < 7 and self.position[i][j+1] != None and
+                        self.position[i][j+1] == (self.PAWN, color)):
                         isolated = False
                     if (self.position[i+color_row][j] == (self.PAWN, color)):
                         doubled_pawns += 1
@@ -509,7 +513,33 @@ class ChessPosition(object):
         return doubled_pawns, blocked_pawns, isolated_pawns
 
     def get_mobility(self, color):
-        return len(self.get_moves(color))
+        return len(list(self.get_moves(color, exclude_pieces=[self.KING])))
+
+    def get_best_move(self, depth):
+        color = self.WHITE if self.white_to_move else self.BLACK
+        return self.alpha_beta_max([-100000, None], [100000, None], depth, color)
+
+    def alpha_beta_max(self, alpha, beta, depthleft, color):
+        if depthleft == 0:
+            return self.get_strength(color=color), self
+        for move in self.get_moves():
+            score, _ = move.alpha_beta_min(alpha, beta, depthleft - 1, color)
+            if score >= beta[0]:
+                return beta[0], move
+            if score > alpha[0]:
+                alpha = score, move
+        return alpha
+
+    def alpha_beta_min(self, alpha, beta, depthleft, color):
+        if depthleft == 0:
+            return self.get_strength(color=color), self
+        for move in self.get_moves():
+            score, _ = move.alpha_beta_max(alpha, beta, depthleft - 1, color)
+            if score <= alpha[0]:
+                return alpha[0], move
+            if score < beta[0]:
+                beta = score, move
+        return beta
 
 if __name__ == '__main__':
     BLACK = ChessPosition.BLACK
@@ -530,5 +560,10 @@ if __name__ == '__main__':
             [(PAWN, BLACK), (PAWN, BLACK), (PAWN, BLACK), (PAWN, BLACK), (PAWN, BLACK), (PAWN, BLACK), (PAWN, BLACK), (PAWN, BLACK)],
             [(TOWER, BLACK), (HORSE, BLACK), (BISHOP, BLACK), (QUEEN, BLACK), (KING, BLACK), (BISHOP, BLACK), (HORSE, BLACK), (TOWER, BLACK)]]
     chess_position = ChessPosition(position2, 1)
-    moves = chess_position.get_moves_for_depth(4)
-    print len(moves)
+    i = 30
+    while i > 0:
+        i -= 1
+        best_score, best_move = chess_position.get_best_move(3)
+        print best_score
+        print unicode(best_move)
+        chess_position = best_move
